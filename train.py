@@ -1,7 +1,9 @@
 import torch.optim as optim
 import torch.nn as nn
+import torch
 
 from segmentation.dummy_model import Dummy
+from segmentation.fcn_model import FCNModel
 from segmentation.datasets import PascalVOC2012, CIFAR
 
 
@@ -34,9 +36,11 @@ def train(model, dataset, criterion, optimizer, n_epoch=2):
 
 
 if __name__ == '__main__':
-    model = Dummy()
-    #dataset = PascalVOC2012('train')
-    dataset = CIFAR()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(device)
+
+    model = FCNModel()
+    dataset = PascalVOC2012('train')
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
     train(model, dataset, criterion, optimizer)
