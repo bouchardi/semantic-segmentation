@@ -30,33 +30,12 @@ SETS_INFOS = {
             }
         }
 
-class CIFAR:
-    def __init__(self):
-        transform = transforms.Compose([transforms.ToTensor(),
-                             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-
-        trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-        print(trainset)
-        self.trainloader = torch.utils.data.DataLoader(trainset, batch_size=4, shuffle=True, num_workers=2)
-        self.dataiter = iter(self.trainloader)
-
-    def __getitem__(self, i):
-        return self.dataiter.next()
-
-    def __len__(self):
-        return len(self.trainloader)
-
-
-
+CLASSES = ['background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
+           'diningtable', 'dog', 'horse', 'motorbike', 'person', 'potted plant', 'sheep', 'sofa', 'train', 'tv/monitor']
 
 class PascalVOC2012(data.Dataset):
     def __init__(self, _set):
         self.images, self.labels = self._get_split_set(_set)
-        self.transform_pipeline_input = transforms.Compose([transforms.Resize((512, 512)),
-                                                      transforms.ToTensor(),
-                                                      transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                                           std=[0.229, 0.224, 0.225])])
-        self.transform_pipeline_target = transforms.Compose([transforms.Resize((512, 512))])
 
     def __getitem__(self, index):
         image_path = self.images[index]
@@ -65,25 +44,13 @@ class PascalVOC2012(data.Dataset):
         image = Image.open(image_path).convert('RGB')
         label = self.load_label_as_mask_image(label_path)
 
-        image = self.apply_transform_input(image)
-        label = self.apply_transform_target(label)
+        image, label = self.pre_process(image, label)
 
-        return (image, label)
+        return {'image': torch.FloatTensor(image),
+                'label': torch.LongTensor(label)}
 
     def __len__(self):
         return len(self.images)
-
-    def apply_transform_target(self, label):
-        x = self.transform_pipeline_target(label)
-        x = torch.LongTensor(np.asarray(x))
-        x = x.unsqueeze(0)
-        return x
-
-    def apply_transform_input(self, image):
-        x = self.transform_pipeline_input(image)
-        x = Variable(x)
-        x = x.unsqueeze(0)
-        return x
 
 
     @staticmethod
@@ -95,6 +62,32 @@ class PascalVOC2012(data.Dataset):
         elif ext == '.png':
             label = Image.open(label_path)
         return label
+
+    def pre_process(self, image, label):
+        image = np.array(image)
+        label = np.array(label)
+
+        # Resize (TODO: non-hardcoded size)
+        image = np.resize(image, (3, 512, 512))
+        label = np.resize(label, (512, 512))
+
+        # Normalize 0-1
+        image = image/255
+
+        # No need to encode with CrossEntropyLoss
+        #label = self.encode(label)
+
+        return image, label
+
+    def encode(self, label):
+        encoded = np.zeros((21, label.shape[0], label.shape[1]))
+        for i in range(label.shape[0]):
+            for j in range(label.shape[1]):
+                value = label[i, j]
+                if value == 255:
+                    continue
+                encoded[value, i, j] = 1
+        return encoded
 
     def _get_split_set(self, _set):
         if _set not in SETS_INFOS:

@@ -5,11 +5,11 @@ import torch.nn.functional as F
 from torchvision.models import vgg16
 
 class FCNModel(nn.Module):
-    def __init__(self):
-        super(FCNModel, self).__init__()
+    def __init__(self, vgg16_pretrained=False):
+        super().__init__()
 
         # VGG16 pretrained features
-        VGG16 = vgg16(pretrained=True)
+        VGG16 = vgg16(pretrained=vgg16_pretrained)
         # Separate VGG16 after pool layers to connect the skip connections
         self.block_pool0 = VGG16.features[:5]
         self.block_pool1 = VGG16.features[5:10]
@@ -31,63 +31,30 @@ class FCNModel(nn.Module):
         self.deconv6 = nn.ConvTranspose2d(85, 21, 4, stride=2, padding=1)
 
     def forward(self, x):
-        print(x.size())
         out_pool0 = self.block_pool0(x)
-        print('0')
-        print(out_pool0.size())
         out_pool1 = self.block_pool1(out_pool0)
-        print('1')
-        print(out_pool1.size())
         out_pool2 = self.block_pool2(out_pool1)
-        print('2')
-        print(out_pool2.size())
         out_pool3 = self.block_pool3(out_pool2)
-        print('3')
-        print(out_pool3.size())
         out_pool4 = self.block_pool4(out_pool3)
-        print('4')
-        print(out_pool4.size())
         x = F.relu(self.conv1(out_pool4))
-        print('5')
-        print(x.size())
         x = F.relu(self.conv2(x))
-        print('6')
-        print(x.size())
         x = F.relu(self.conv3(x))
-        print('7')
-        print(x.size())
         x = F.relu(self.conv4(x))
-        print('8')
-        print(x.size())
         x = F.relu(self.deconv1(x))
-        print('9')
-        print(x.size())
         x = self.crop(x)
-        print('10')
         x = torch.cat((x, out_pool4), 1)
-        print(x.size())
         x = F.relu(self.deconv2(x))
-        print('11')
         x = torch.cat((x, out_pool3), 1)
-        print(x.size())
         x = F.relu(self.deconv3(x))
-        print('12')
         x = torch.cat((x, out_pool2), 1)
-        print(x.size())
         x = F.relu(self.deconv4(x))
-        print('13')
         x = torch.cat((x, out_pool1), 1)
-        print(x.size())
         x = F.relu(self.deconv5(x))
-        print('14')
         x = torch.cat((x, out_pool0), 1)
-        print(x.size())
         x = F.relu(self.deconv6(x))
-        print('15')
-        print(x.size())
         return x
 
-    def from_file(path):
+    def from_file(self, path):
         self.load_state_dict(torch.load(path))
 
 if __name__ == '__main__':
