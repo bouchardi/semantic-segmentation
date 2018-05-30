@@ -1,3 +1,5 @@
+import argparse
+
 import torch.optim as optim
 import torch.nn as nn
 from torch.autograd import Variable
@@ -10,7 +12,7 @@ from segmentation.datasets import PascalVOC2012
 
 def train(model, dataset, criterion, optimizer, device, path='/project/fcn.pt', n_epoch=2):
 
-    dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
 
     for epoch in range(n_epoch):
 
@@ -36,7 +38,7 @@ def train(model, dataset, criterion, optimizer, device, path='/project/fcn.pt', 
 
             # print statistics
             running_loss += loss.item()
-            if i % 200 == 199:    # print every 2000 mini-batches
+            if i % 200 == 199:    # print every 200 mini-batches
                 print('[%d, %5d] loss: %.3f' %
                     (epoch + 1, i + 1, running_loss / 200))
                 running_loss = 0.0
@@ -47,28 +49,25 @@ def train(model, dataset, criterion, optimizer, device, path='/project/fcn.pt', 
     print('Model saved: {}'.format(path))
 
 
-
-
-
-#    x = torch.LongTensor(np.asarray(x))
-#    x = x.unsqueeze(0)
-#
-#    x = Variable(x)
-#    x = x.unsqueeze(0)
-
-
-
-
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-n', help='Experiment number')
+    parser.add_argument('-lr', type=float, help='Learning rate')
+    parser.add_argument('--momentum', type=float, help='Momentum')
+    parser.add_argument('--n-epochs', type=int, help='Epochs')
+
+    args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print('Start training on {}'.format(device))
 
-    model = FCNModel()
+    model = FCNModel(vgg16_pretrained=True)
     if device != 'cpu':
         model.to(device)
 
     dataset = PascalVOC2012('train')
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-    train(model, dataset, criterion, optimizer, device, n_epoch=1)
+    optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=float(args.momentum))
+
+    path = '/project/fcn_{}.pt'.format(args.n)
+    train(model, dataset, criterion, optimizer, device, path=path, n_epoch=args.n_epochs)

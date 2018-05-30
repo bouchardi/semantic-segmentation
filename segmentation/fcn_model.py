@@ -30,6 +30,8 @@ class FCNModel(nn.Module):
         self.deconv5 = nn.ConvTranspose2d(149, 21, 4, stride=2, padding=1)
         self.deconv6 = nn.ConvTranspose2d(85, 21, 4, stride=2, padding=1)
 
+        self.softmax = nn.Softmax()
+
     def forward(self, x):
         out_pool0 = self.block_pool0(x)
         out_pool1 = self.block_pool1(out_pool0)
@@ -51,7 +53,8 @@ class FCNModel(nn.Module):
         x = torch.cat((x, out_pool1), 1)
         x = F.relu(self.deconv5(x))
         x = torch.cat((x, out_pool0), 1)
-        x = F.relu(self.deconv6(x))
+        x = self.deconv6(x)
+        x = self.softmax(x)
         return x
 
     def from_file(self, path):

@@ -52,7 +52,6 @@ class PascalVOC2012(data.Dataset):
     def __len__(self):
         return len(self.images)
 
-
     @staticmethod
     def load_label_as_mask_image(label_path):
         _, ext =os.path.splitext(label_path)
@@ -73,21 +72,7 @@ class PascalVOC2012(data.Dataset):
 
         # Normalize 0-1
         image = image/255
-
-        # No need to encode with CrossEntropyLoss
-        #label = self.encode(label)
-
         return image, label
-
-    def encode(self, label):
-        encoded = np.zeros((21, label.shape[0], label.shape[1]))
-        for i in range(label.shape[0]):
-            for j in range(label.shape[1]):
-                value = label[i, j]
-                if value == 255:
-                    continue
-                encoded[value, i, j] = 1
-        return encoded
 
     def _get_split_set(self, _set):
         if _set not in SETS_INFOS:
@@ -109,7 +94,3 @@ class PascalVOC2012(data.Dataset):
     @staticmethod
     def _get_path(_set, path_type):
         return os.path.join('/datasets', SETS_INFOS.get(_set).get('base_path', ''), SETS_INFOS.get(_set).get(path_type))
-
-if __name__ == '__main__':
-    cifar = CIFAR()
-    print(len(cifar))
