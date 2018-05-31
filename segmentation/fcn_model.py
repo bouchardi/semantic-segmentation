@@ -8,6 +8,8 @@ class FCNModel(nn.Module):
     def __init__(self, vgg16_pretrained=False):
         super().__init__()
 
+        self.padding = nn.ZeroPad2d(100)
+
         # VGG16 pretrained features
         VGG16 = vgg16(pretrained=vgg16_pretrained)
         # Separate VGG16 after pool layers to connect the skip connections
@@ -26,19 +28,20 @@ class FCNModel(nn.Module):
         self.deconv1 = nn.ConvTranspose2d(21, 21, 4, stride=2)
 
         self.conv_0 = nn.Conv2d(512, 21, 1, padding=0)
-        # TODO add correct padding value
-        self.crop_0 = nn.ZeroPad2d(-5)
+        self.crop_0 = nn.AdaptiveMaxPool2d(34)
         self.deconv_0 = nn.ConvTranspose2d(21, 21, 4, stride=2)
 
         self.conv_1 = nn.Conv2d(256, 21, 1, padding=0)
-        # TODO add correct padding value
-        self.crop_1 = nn.ZeroPad2d(-9)
-        self.deconv_1 = nn.ConvTranspose2d(21, 21, 16, stride=11)
+        self.crop_1 = nn.AdaptiveMaxPool2d(70)
+        self.deconv_1 = nn.ConvTranspose2d(21, 21, 16, stride=8)
 
-        self.crop_f = nn.ZeroPad2d((1, 0, 1, 0))
+        self.crop_f = nn.AdaptiveMaxPool2d(512)
         self.softmax = nn.Softmax()
 
     def forward(self, x):
+        # Padding
+        x = self.padding(x)
+
         # VGG 16
         out_pool1 = self.vgg_pool1(x)
         out_pool2 = self.vgg_pool2(out_pool1)
@@ -66,7 +69,6 @@ class FCNModel(nn.Module):
 
         # Crop final result and apply softmax
         x = self.crop_f(upscore8)
-        x = self.softmax(x)
         return x
 
     def from_file(self, path):

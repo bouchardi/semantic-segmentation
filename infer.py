@@ -1,5 +1,6 @@
 import argparse
 
+import numpy as np
 import torch.optim as optim
 import torch.nn as nn
 from torch.autograd import Variable
@@ -15,10 +16,12 @@ def infer(model, dataset, count=1, random=True):
     dataloader = DataLoader(dataset, batch_size=1, shuffle=random)
     for i, data in enumerate(dataloader):
         result = model(data['image'])
-
+        result = nn.Softmax()(result)
+        print(result.view(-1))
         out = result.detach().numpy()[0].argmax(axis=0)
-        _min, _max = out.min(), out.max()
-        print('{}: min = {}, max = {}'.format(i, _min, _max))
+        _min, _max, _mean = out.min(), out.max(), out.mean()
+        print('{}: min = {}, max = {}, mean = {}'.format(i, _min, _max, _mean))
+        print(np.unique(out))
 
         if _max != 0:
             nonnull += 1

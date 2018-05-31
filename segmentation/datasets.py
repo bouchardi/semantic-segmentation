@@ -4,6 +4,7 @@ from torch.utils import data
 from PIL import Image
 from scipy import io
 import numpy as np
+from scipy.misc import imresize
 
 import torch
 import torchvision
@@ -43,9 +44,8 @@ class PascalVOC2012(data.Dataset):
 
         image = Image.open(image_path).convert('RGB')
         label = self.load_label_as_mask_image(label_path)
-
+        return {'image': image, 'label': label}
         image, label = self.pre_process(image, label)
-
         return {'image': torch.FloatTensor(image),
                 'label': torch.LongTensor(label)}
 
@@ -67,8 +67,11 @@ class PascalVOC2012(data.Dataset):
         label = np.array(label)
 
         # Resize (TODO: non-hardcoded size)
-        image = np.resize(image, (3, 512, 512))
-        label = np.resize(label, (512, 512))
+        image = imresize(image, (512, 512, 3))
+        label = imresize(label, (512, 512))
+
+        # Pytorch compatible
+        image = np.transpose(image, (2, 0, 1))
 
         # Normalize 0-1
         image = image/255
