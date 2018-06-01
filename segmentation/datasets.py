@@ -44,7 +44,7 @@ class PascalVOC2012(data.Dataset):
 
         image = Image.open(image_path).convert('RGB')
         label = self.load_label_as_mask_image(label_path)
-        return {'image': image, 'label': label}
+
         image, label = self.pre_process(image, label)
         return {'image': torch.FloatTensor(image),
                 'label': torch.LongTensor(label)}
