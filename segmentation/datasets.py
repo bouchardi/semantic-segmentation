@@ -5,13 +5,13 @@ from PIL import Image
 from scipy import io
 import numpy as np
 from scipy.misc import imresize
+from skimage import io as sio
 
 import torch
 import torchvision
-import torchvision.transforms as transforms
 from torchvision.transforms import ToTensor
 from torch.autograd import Variable
-
+from torchvision.transforms import functional as F
 
 
 SETS_INFOS = {
@@ -30,9 +30,26 @@ SETS_INFOS = {
             'ext': '.png'
             }
         }
+_MEAN = (0.485, 0.456, 0.406)
+_STD = (0.229, 0.224, 0.225)
 
-CLASSES = ['background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
-           'diningtable', 'dog', 'horse', 'motorbike', 'person', 'potted plant', 'sheep', 'sofa', 'train', 'tv/monitor']
+
+def pre_process(image, label):
+    image = np.array(image)
+    label = np.array(label)
+
+    image = imresize(image, (512, 512, 3), interp='bilinear')
+    label = imresize(label, (512, 512), interp='nearest')
+
+    # Pytorch compatible
+    image = np.transpose(image, (2, 0, 1))
+
+    image = torch.FloatTensor(image)
+    label = torch.LongTensor(label)
+
+    image = F.normalize(image, _MEAN, _STD)
+    return image, label
+
 
 class PascalVOC2012(data.Dataset):
     def __init__(self, _set):
@@ -45,12 +62,22 @@ class PascalVOC2012(data.Dataset):
         image = Image.open(image_path).convert('RGB')
         label = self.load_label_as_mask_image(label_path)
 
-        image, label = self.pre_process(image, label)
-        return {'image': torch.FloatTensor(image),
-                'label': torch.LongTensor(label)}
+        image, label = pre_process(image, label)
+        return {'image': image,
+                'label': label}
 
     def __len__(self):
         return len(self.images)
+
+    def get_classes(self):
+       return ['background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
+               'diningtable', 'dog', 'horse', 'motorbike', 'person', 'potted plant', 'sheep', 'sofa', 'train', 'tv/monitor']
+
+    def get_ignored_class(self):
+        return 255
+
+    def get_classes_count(self):
+        return len(self.get_classes())
 
     @staticmethod
     def load_label_as_mask_image(label_path):
@@ -61,21 +88,6 @@ class PascalVOC2012(data.Dataset):
         elif ext == '.png':
             label = Image.open(label_path)
         return label
-
-    def pre_process(self, image, label):
-        image = np.array(image)
-        label = np.array(label)
-
-        # Resize (TODO: non-hardcoded size)
-        image = imresize(image, (512, 512, 3))
-        label = imresize(label, (512, 512))
-
-        # Pytorch compatible
-        image = np.transpose(image, (2, 0, 1))
-
-        # Normalize 0-1
-        image = image/255
-        return image, label
 
     def _get_split_set(self, _set):
         if _set not in SETS_INFOS:
@@ -96,4 +108,52 @@ class PascalVOC2012(data.Dataset):
 
     @staticmethod
     def _get_path(_set, path_type):
-        return os.path.join('/datasets', SETS_INFOS.get(_set).get('base_path', ''), SETS_INFOS.get(_set).get(path_type))
+        return os.path.join('/datasets/pascal', SETS_INFOS.get(_set).get('base_path', ''), SETS_INFOS.get(_set).get(path_type))
+
+
+
+class CamVid(data.Dataset):
+
+    def __init__(self, _set='val'):
+        self.images, self.labels = self._get_split_set(_set)
+
+
+    def __getitem__(self, index):
+        image_path = self.images[index]
+        label_path = self.labels[index]
+
+        image = sio.imread(image_path)
+        label = sio.imread(label_path)
+
+        image, label = pre_process(image, label)
+
+        return {'image': image,
+                'label': label}
+
+    def __len__(self):
+        return len(self.images)
+
+    def get_classes(self):
+        return ['sky', 'building', 'column_pole', 'road', 'sidewalk', 'tree',
+                'sign', 'fence', 'car', 'pedestrian', 'byciclist']
+
+    def get_ignored_class(self):
+        return 11
+
+    def get_classes_count(self):
+        # -1 for the ignored class
+        return len(self.get_classes())
+
+    def _get_split_set(self, _set):
+        base_path = '/datasets/camvid'
+        # Get file names for this set and year
+        images = []
+        labels = []
+        with open(os.path.join(base_path, _set + '.txt')) as f:
+            for fi in f.readlines():
+                raw_name = fi.strip()
+                raw_name = raw_name.split("/")[4]
+                raw_name = raw_name.strip()
+                images.append(os.path.join(base_path, '{}'.format(_set), raw_name))
+                labels.append(os.path.join(base_path, '{}annot'.format(_set), raw_name))
+        return images, labels
