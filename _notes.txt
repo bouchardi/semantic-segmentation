@@ -1,0 +1,9 @@
+Lessons learned:
+
+- Pytorch CrossEntropyLoss already includes the Softmax layer - do not add a second!
+
+- For FCN8s skip connections, we crop pool4 and pool3 to be able to fuse the layers. It is possible to do so by adding a first layer with 100 padding so that we don't loose relevent information when cropping afterwards. This is not memory efficient and is not used is more recent segmentation papers.
+
+- When working on segmentation problems, it is recommended to use cropping instead of resizing to have the same image size. If you do use resizing, make sure to use 'nearest neighbors' method to interpolate the labels to avoid interpolation class 1 and 2 to class 1.5 which would not exist.
+
+- When working with a pretrained model, normalize your data using the same normalization method as they did to train the pretrained model. Otherwise, your pretraining becomes useless.
