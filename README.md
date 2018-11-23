@@ -1,6 +1,6 @@
 # semantic-segmentation
 
-Implementation of semantic segmentation models. The model currently contains:
+Implementation of semantic segmentation models. The repo currently contains:
 
 ### Models
 - FCN8s
